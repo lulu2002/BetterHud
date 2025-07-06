@@ -13,9 +13,9 @@ import kr.toxicity.hud.util.runByTick
 import java.util.*
 
 class PopupIteratorImpl(
-    reason: UpdateEvent,
+    private val reason: UpdateEvent,
     private val player: HudPlayer,
-    layouts: List<PopupLayout>,
+    private val layouts: List<PopupLayout>,
     private val parent: Popup,
     private val unique: Boolean,
     private val maxIndex: Int,
@@ -33,6 +33,9 @@ class PopupIteratorImpl(
     private var i = -1
     private var removal = false
     private val id = UUID.randomUUID()
+    
+    private var lastTotalCount = -1
+    private var useDynamicPositioning = false
 
     private val valueMap = run {
         val newReason = PopupUpdateEvent(reason, this)
@@ -42,6 +45,8 @@ class PopupIteratorImpl(
             }
         }
     }
+    
+    private var dynamicValueMap: List<(HudPlayer, Int) -> Runner<WidthComponent>>? = null
 
     override fun parent(): Popup = parent
 
@@ -66,6 +71,7 @@ class PopupIteratorImpl(
     override fun getKey(): Any = key
 
     private var _i = -1
+    private var _totalCount = -1
     private var _mapper = emptyList<Runner<WidthComponent>>()
     override fun next(): List<WidthComponent> {
         if (_i != i) {
@@ -108,8 +114,33 @@ class PopupIteratorImpl(
         return i.compareTo(other.index)
     }
 
+    fun setTotalCount(totalCount: Int) {
+        if (_totalCount != totalCount) {
+            _totalCount = totalCount
+            lastTotalCount = totalCount
+            useDynamicPositioning = true
+            
+            val newReason = PopupUpdateEvent(reason, this)
+            dynamicValueMap = layouts.map {
+                it.getComponentWithTotal(newReason, totalCount) {
+                    tick
+                }
+            }
+            
+            if (_i != -1) {
+                refreshMapper()
+            }
+        }
+    }
+
     private fun refreshMapper() {
-        _mapper = valueMap.map {
+        val currentValueMap = if (useDynamicPositioning && dynamicValueMap != null) {
+            dynamicValueMap!!
+        } else {
+            valueMap
+        }
+        
+        _mapper = currentValueMap.map {
             runByTick(parent.tick(), when (parent.frameType()) {
                 GLOBAL -> { { player.tick } }
                 LOCAL -> { { tick } }

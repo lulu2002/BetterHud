@@ -32,17 +32,22 @@ class TEquation(expression: String) {
         .variables(setOf(
             "t",
             "pi",
-            "e"
+            "e",
+            "total"
         ))
         .build()
 
-    infix fun evaluate(t: Double) = Expression(expression)
+    infix fun evaluate(t: Double) = evaluate(t, emptyMap())
+    
+    fun evaluate(t: Double, additionalVariables: Map<String, Double>) = Expression(expression)
         .setVariables(mapOf(
             "t" to t,
             "pi" to PI,
             "e" to E
-        ))
+        ) + additionalVariables)
         .evaluate()
 
     infix fun evaluateToInt(t: Double) = evaluate(t).roundToInt()
+    
+    fun evaluateToInt(t: Double, additionalVariables: Map<String, Double>) = evaluate(t, additionalVariables).roundToInt()
 }

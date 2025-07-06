@@ -61,6 +61,23 @@ class PopupLayout(
         }
     }
 
+    fun getComponentWithTotal(reason: UpdateEvent, totalCount: Int, frameSupplier: (HudPlayer) -> Long = { it.tick }): (HudPlayer, Int) -> Runner<WidthComponent> {
+        val build = layout.conditions build reason
+        val dynamicLocations = parent.move.getLocationsWithTotal(totalCount)
+        val map = dynamicLocations.map { location ->
+            PopupLayoutGroup(location, json).getComponent(reason, frameSupplier).let { componentBuilder ->
+                { player: HudPlayer ->
+                    if (build(player)) componentBuilder(player) else Runner {
+                        EMPTY_WIDTH_COMPONENT
+                    }
+                }
+            }
+        }
+        return { player, index ->
+            map[index](player)
+        }
+    }
+
     private inner class PopupLayoutGroup(pair: LocationGroup, val array: JsonArray) {
         private val elements = layout.animation.location.map { location ->
             PopupElement(pair, array, location)

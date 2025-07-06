@@ -9,10 +9,12 @@ class EquationTriple(val x: TEquation, val y: TEquation, val opacity: TEquation)
         val zero = EquationTriple(TEquation.zero, TEquation.zero, TEquation.one)
     }
 
-    infix fun evaluate(d: Double) = Triple(
-        x evaluate d,
-        y evaluate d,
-        opacity evaluate d
+    infix fun evaluate(d: Double) = evaluate(d, emptyMap())
+    
+    fun evaluate(d: Double, additionalVariables: Map<String, Double>) = Triple(
+        x.evaluate(d, additionalVariables),
+        y.evaluate(d, additionalVariables),
+        opacity.evaluate(d, additionalVariables)
     )
 
     constructor(section: YamlObject): this(

@@ -8,6 +8,21 @@ import java.util.*
 
 class PopupIteratorGroupImpl : PopupIteratorGroup {
     private val sourceSet = TreeSet<PopupIterator>()
+    private var lastTotalCount = 0
+    
+    // 更新所有 iterator 的 total count
+    private fun updateTotalCount() {
+        val currentTotalCount = sourceSet.size
+        if (lastTotalCount != currentTotalCount) {
+            lastTotalCount = currentTotalCount
+            // 通知所有 PopupIteratorImpl 更新 total count
+            sourceSet.forEach { iterator ->
+                if (iterator is PopupIteratorImpl) {
+                    iterator.setTotalCount(currentTotalCount)
+                }
+            }
+        }
+    }
 
     override fun addIterator(iterator: PopupIterator) {
         synchronized(sourceSet) {
@@ -55,6 +70,9 @@ class PopupIteratorGroupImpl : PopupIteratorGroup {
                 iterator.index -= minus
             }
             sourceSet += iterator
+            
+            // 更新 total count
+            updateTotalCount()
         }
     }
 
@@ -64,6 +82,9 @@ class PopupIteratorGroupImpl : PopupIteratorGroup {
                 it.remove()
             }
             sourceSet.clear()
+            
+            // 更新 total count
+            updateTotalCount()
         }
     }
 
@@ -80,7 +101,7 @@ class PopupIteratorGroupImpl : PopupIteratorGroup {
             val copy = sourceSet.toList()
             val result = ArrayList<WidthComponent>()
             var i = 0
-            sourceSet.removeIf { next ->
+            val removedAny = sourceSet.removeIf { next ->
                 i++
                 (if (next.index > next.maxIndex) {
                     !next.canSave() || (next.alwaysCheckCondition() && !next.available())
@@ -96,6 +117,12 @@ class PopupIteratorGroupImpl : PopupIteratorGroup {
                     }
                 }
             }
+            
+            // 如果有 iterator 被移除，更新 total count
+            if (removedAny) {
+                updateTotalCount()
+            }
+            
             return result
         }
     }
