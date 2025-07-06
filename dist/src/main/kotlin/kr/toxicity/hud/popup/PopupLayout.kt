@@ -62,19 +62,39 @@ class PopupLayout(
     }
 
     fun getComponentWithTotal(reason: UpdateEvent, totalCount: Int, frameSupplier: (HudPlayer) -> Long = { it.tick }): (HudPlayer, Int) -> Runner<WidthComponent> {
+        println("[DEBUG] PopupLayout.getComponentWithTotal called with totalCount=$totalCount")
         val build = layout.conditions build reason
-        val dynamicLocations = parent.move.getLocationsWithTotal(totalCount)
-        val map = dynamicLocations.map { location ->
-            PopupLayoutGroup(location, json).getComponent(reason, frameSupplier).let { componentBuilder ->
-                { player: HudPlayer ->
-                    if (build(player)) componentBuilder(player) else Runner {
-                        EMPTY_WIDTH_COMPONENT
+        
+        return { player, stackIndex ->
+            println("[DEBUG] PopupLayout.getComponentWithTotal: Called with stackIndex=$stackIndex")
+            if (stackIndex < 0) {
+                println("[DEBUG] PopupLayout.getComponentWithTotal: Invalid stackIndex $stackIndex, returning EMPTY_WIDTH_COMPONENT")
+                Runner { EMPTY_WIDTH_COMPONENT }
+            } else {
+                val frame = frameSupplier(player)
+                val duration = (parent as? PopupImpl)?.move?.getDuration() ?: 1
+                val timeIndex = ((frame % duration) + 1).toInt()
+                println("[DEBUG] PopupLayout.getComponentWithTotal: frame=$frame, duration=$duration, timeIndex=$timeIndex, totalCount=$totalCount")
+                
+                val location = (parent as? PopupImpl)?.move?.getLocationAt(timeIndex, totalCount)
+                if (location != null) {
+                    println("[DEBUG] PopupLayout.getComponentWithTotal: Using dynamic location at timeIndex=$timeIndex")
+                    val layoutGroup = PopupLayoutGroup(location, json)
+                    val componentBuilder = layoutGroup.getComponent(reason) { frameSupplier(it) }
+                    
+                    if (build(player)) {
+                        val result = componentBuilder(player)
+                        println("[DEBUG] PopupLayout.getComponentWithTotal: Layout component builder returned component")
+                        result
+                    } else {
+                        println("[DEBUG] PopupLayout.getComponentWithTotal: Layout condition failed, returning EMPTY_WIDTH_COMPONENT")
+                        Runner { EMPTY_WIDTH_COMPONENT }
                     }
+                } else {
+                    println("[DEBUG] PopupLayout.getComponentWithTotal: Failed to get dynamic location")
+                    Runner { EMPTY_WIDTH_COMPONENT }
                 }
             }
-        }
-        return { player, index ->
-            map[index](player)
         }
     }
 
