@@ -665,7 +665,10 @@ object TextManagerImpl : BetterHudManager, TextManager {
                         }
                         textList += HudTextArray(name, json, m * h) { s ->
                             (s * m * h).roundToInt().let {
-                                it - (it - 8) / 4 - (scale * s).roundToInt()
+                                // 修復 scale < 8 時的 ascent 計算問題
+                                val baseHeight = maxOf(it, scale) // 確保不會小於 scale
+                                val adjustment = maxOf(baseHeight - scale, 0) / 4 // 避免負數調整
+                                baseHeight - adjustment - (scale * s).roundToInt()
                             }
                         }
                     }
